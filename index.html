@@ -11,102 +11,42 @@ body{background:#0C0900;display:flex;align-items:center;justify-content:center;f
 @keyframes sp{to{transform:rotate(360deg)}}.lp{font-size:.88rem;opacity:.65;letter-spacing:.6px;margin-top:8px}
 .er{color:#C62828;padding:40px;text-align:center;max-width:480px}.er h2{margin-bottom:10px}.er p{font-size:.88rem;opacity:.75;line-height:1.6;margin-top:6px}
 </style>
-<style id="exam-banner-style">
-#examIntegrityBanner{position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#7a0000;color:#fff;padding:10px 14px;font:600 14px/1.4 Arial,sans-serif;display:none;box-shadow:0 2px 10px rgba(0,0,0,.35)}
-#examIntegrityBanner strong{display:inline-block;margin-right:8px}
-</style>
-<script id="exam-safe-patch">
+<script id="fullscreen-enforce">
 (function(){
-  const state = { incidents: 0, fullscreen: false, banner: null, hideTimer: null };
-  function ensureBanner(){
-    if (state.banner) return state.banner;
-    const b = document.createElement('div');
-    b.id = 'examIntegrityBanner';
-    b.innerHTML = '<strong>Exam notice:</strong><span id="examIntegrityText">Stay on this tab and remain in fullscreen.</span>';
-    document.body.prepend(b);
-    state.banner = b;
-    return b;
-  }
-  function showBanner(msg, persist=false){
-    const b = ensureBanner();
-    const t = b.querySelector('#examIntegrityText');
-    if (t) t.textContent = msg;
-    b.style.display = 'block';
-    clearTimeout(state.hideTimer);
-    if (!persist) state.hideTimer = setTimeout(() => { if (state.banner) state.banner.style.display = 'none'; }, 5000);
-  }
-  function logIncident(type){
-    state.incidents += 1;
-    try { (window.examIncidents = window.examIncidents || []).push({ type, ts: Date.now() }); } catch(e){}
-  }
-  async function requestFs(){
-    try {
-      const el = document.documentElement;
-      if (el.requestFullscreen) await el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-    } catch(e) {}
-  }
-  document.addEventListener('DOMContentLoaded', () => {
-    ensureBanner();
-    showBanner('For the exam, keep this page in fullscreen and do not switch tabs.', true);
-    requestFs();
-  });
-  document.addEventListener('fullscreenchange', () => {
-    state.fullscreen = !!document.fullscreenElement;
-    if (!state.fullscreen) { logIncident('fullscreen_exit'); showBanner('Fullscreen was exited. Return to the exam immediately.', true); }
-  });
-  window.addEventListener('blur', () => { logIncident('blur'); showBanner('Please return to the exam tab immediately.'); });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { logIncident('hidden'); showBanner('Tab switching detected. Return to the exam tab immediately.', true); }
-  });
-  document.addEventListener('contextmenu', e => { e.preventDefault(); logIncident('contextmenu'); showBanner('Right-click is disabled during the exam.'); }, true);
-  document.addEventListener('copy', e => { e.preventDefault(); logIncident('copy'); showBanner('Copy is disabled during the exam.'); }, true);
-  document.addEventListener('cut', e => { e.preventDefault(); logIncident('cut'); showBanner('Cut is disabled during the exam.'); }, true);
-  document.addEventListener('paste', e => { e.preventDefault(); logIncident('paste'); showBanner('Paste is disabled during the exam.'); }, true);
-  document.addEventListener('keydown', e => {
-    const k = (e.key || '').toLowerCase();
-    const ctrl = e.ctrlKey || e.metaKey;
-    if ((ctrl && ['c','v','x','u','s','p'].includes(k)) || e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['i','j','c','k'].includes(k))) {
-      e.preventDefault();
-      logIncident('key_'+k);
-      showBanner('That shortcut is disabled during the exam.');
+  const bannerId = 'examIntegrityBanner';
+  function banner(msg){
+    let b = document.getElementById(bannerId);
+    if(!b){
+      b = document.createElement('div');
+      b.id = bannerId;
+      b.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:2147483647;background:#7a0000;color:#fff;padding:10px 14px;font:600 14px Arial,sans-serif;text-align:center';
+      document.body.appendChild(b);
     }
-  }, true);
-  const interval = setInterval(() => {
-    const devtoolsLikely = (window.outerWidth - window.innerWidth > 160) || (window.outerHeight - window.innerHeight > 160);
-    if (devtoolsLikely) { logIncident('devtools_heuristic'); showBanner('Suspicious window change detected. Return to the exam view.', true); }
-  }, 1500);
-  window.addEventListener('beforeunload', e => {
-    if (state.incidents > 0) { e.preventDefault(); e.returnValue = ''; }
+    b.textContent = msg;
+  }
+  async function fs(){
+    try{
+      if (!document.fullscreenElement){
+        await document.documentElement.requestFullscreen();
+      }
+    }catch(e){}
+  }
+  let armed = false;
+  function arm(){
+    if(armed) return;
+    armed = true;
+    fs();
+    banner('Fullscreen required. Stay on this tab.');
+  }
+  window.addEventListener('pointerdown', arm, true);
+  window.addEventListener('touchstart', arm, true);
+  window.addEventListener('keydown', arm, true);
+  document.addEventListener('fullscreenchange', ()=>{
+    if (!document.fullscreenElement) location.reload();
   });
-})();
-</script>
-
-
-<script id="exam-screenshot-safe">
-(function(){
-  function warn(msg){
-    let b=document.getElementById('examIntegrityBanner');
-    if(!b){b=document.createElement('div');b.id='examIntegrityBanner';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#7a0000;color:#fff;padding:10px 14px;font:600 14px Arial,sans-serif;';document.body.prepend(b)}
-    b.textContent=msg; b.style.display='block';
-  }
-  function enterFs(){
-    if(document.fullscreenElement) return;
-    const el=document.documentElement;
-    (el.requestFullscreen?.() || el.webkitRequestFullscreen?.()).catch?.(()=>warn('Click once to enable fullscreen.'));
-  }
-  const tryEnter=()=>enterFs();
-  window.addEventListener('pointerdown', tryEnter, true);
-  window.addEventListener('touchstart', tryEnter, true);
-  window.addEventListener('keydown', tryEnter, true);
-  document.addEventListener('fullscreenchange', ()=>{ if(!document.fullscreenElement) warn('Fullscreen exited. Return to the exam.'); });
-  document.addEventListener('keydown', e=>{
-    const k=(e.key||'').toLowerCase();
-    if(k==='printscreen' || e.keyCode===44 || (e.metaKey && e.shiftKey && k==='s') || (e.ctrlKey && e.shiftKey && k==='s')){
-      e.preventDefault();
-      warn('Screen capture shortcut detected. Return to the exam.');
-    }
-  }, true);
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.hidden) location.reload();
+  });
 })();
 </script>
 
