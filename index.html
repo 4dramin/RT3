@@ -376,4 +376,47 @@ document.open('text/html','replace');document.write(_html);document.close();
 })();
 </script>
 
+
+<script>
+(function(){
+const STUDENT_NAME="EXAM SESSION";
+function createWatermark(){
+ if(document.getElementById("__watermark")) return;
+ const wm=document.createElement("div");
+ wm.id="__watermark";
+ wm.style.cssText="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2147483646;overflow:hidden;opacity:.08;font-size:28px;font-weight:900;color:red;display:flex;flex-wrap:wrap;transform:rotate(-30deg)";
+ document.body.appendChild(wm);
+ let html="";
+ for(let i=0;i<300;i++){html+=`<div style="padding:50px">${STUDENT_NAME} • ${new Date().toLocaleTimeString()}</div>`;}
+ wm.innerHTML=html;
+}
+window.addEventListener("load",createWatermark);
+
+const st=document.createElement("style");
+st.textContent="*{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important;}";
+document.head.appendChild(st);
+
+document.addEventListener("dragstart",e=>e.preventDefault(),true);
+["copy","cut","paste"].forEach(evt=>document.addEventListener(evt,e=>{e.preventDefault();e.stopPropagation();},true));
+
+let violations=0;
+function recordViolation(){
+ violations++;
+ if(violations>=3){
+   document.body.innerHTML='<div style="background:#111;color:#fff;height:100vh;display:flex;align-items:center;justify-content:center;font:32px Arial;text-align:center">Exam terminated.<br>Integrity violation detected.</div>';
+   throw new Error("Exam terminated");
+ }
+}
+
+window.addEventListener("blur",()=>recordViolation());
+document.addEventListener("visibilitychange",()=>{if(document.hidden)recordViolation();});
+
+window.print=function(){};
+window.open=function(){return null;};
+
+document.documentElement.setAttribute("translate","no");
+document.body.setAttribute("translate","no");
+})();
+</script>
+
 </body></html>
